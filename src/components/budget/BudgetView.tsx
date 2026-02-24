@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { isSameMonth, parseISO, startOfMonth, endOfMonth, eachWeekOfInterval, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from 'date-fns';
+import { isSameMonth, parseISO } from 'date-fns';
 import { useApp } from '../../context/AppContext';
 import MonthPicker from '../shared/MonthPicker';
 import Modal from '../shared/Modal';
@@ -22,9 +22,6 @@ export default function BudgetView() {
     categories,
     selectedMonth,
     setSelectedMonth,
-    addBudget,
-    updateBudget,
-    deleteBudget,
   } = useApp();
 
   const [viewPeriod, setViewPeriod] = useState<ViewPeriod>('monthly');

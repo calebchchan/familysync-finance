@@ -1,10 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import Modal from '../shared/Modal';
-import type { JointPool, Pledge } from '../../types';
-
 export default function PoolsView() {
-  const { pools, pledges, transactions, currentUser, addPledge, accounts } = useApp();
+  const { pools, pledges, transactions } = useApp();
   const [selectedPool, setSelectedPool] = useState<string | null>(null);
   const [showPledgeForm, setShowPledgeForm] = useState(false);
 

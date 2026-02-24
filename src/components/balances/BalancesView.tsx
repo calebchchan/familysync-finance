@@ -93,7 +93,7 @@ export default function BalancesView() {
             <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
             <YAxis hide />
             <Tooltip
-              formatter={(value: number) => fmtMoney(value)}
+              formatter={(value) => fmtMoney(value as number)}
               contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
             />
             <Area
