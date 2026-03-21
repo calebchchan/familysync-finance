@@ -95,13 +95,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const fid = inviteFamilyId || crypto.randomUUID();
 
-    // Create family_members entry
-    const { error: memberError } = await supabase.from('family_members').insert({
-      auth_user_id: data.user.id,
-      role,
-      family_id: fid,
-      email,
-    });
+    // Create family_members entry.
+    // Retry with backoff because the auth.users row may not be visible
+    // to foreign-key checks immediately after signUp returns.
+    let memberError: { message: string } | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 500 * attempt));
+      const res = await supabase.from('family_members').insert({
+        auth_user_id: data.user.id,
+        role,
+        family_id: fid,
+        email,
+      });
+      memberError = res.error;
+      if (!memberError) break;
+    }
 
     if (memberError) return memberError.message;
 
