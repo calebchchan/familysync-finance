@@ -12,6 +12,7 @@ import type {
   TabId,
 } from '../types';
 import { api } from '../services/mockData';
+import { useAuth } from './AuthContext';
 
 interface AppState {
   currentUser: UserId;
@@ -70,8 +71,10 @@ interface AppContextType extends AppState {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { userRole } = useAuth();
+
   const [state, setState] = useState<AppState>({
-    currentUser: 'husband',
+    currentUser: (userRole as UserId) || 'husband',
     users: [],
     transactions: [],
     categories: [],
@@ -85,6 +88,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loading: true,
     error: null,
   });
+
+  // Sync currentUser with auth role
+  useEffect(() => {
+    if (userRole) {
+      setState((s) => ({ ...s, currentUser: userRole }));
+    }
+  }, [userRole]);
 
   const refreshData = useCallback(async () => {
     setState((s) => ({ ...s, loading: true, error: null }));

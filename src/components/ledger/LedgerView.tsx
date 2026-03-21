@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { format, isSameMonth, parseISO } from 'date-fns';
+import { isSameMonth, parseISO } from 'date-fns';
 import { useApp } from '../../context/AppContext';
 import MonthPicker from '../shared/MonthPicker';
 import TransactionForm from '../transactions/TransactionForm';
@@ -19,17 +19,15 @@ export default function LedgerView() {
   const [showForm, setShowForm] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
-  // Visible transactions: own personal + any joint (with poolId)
   const visibleTransactions = useMemo(() => {
     return transactions.filter((t) => {
       const inMonth = isSameMonth(parseISO(t.date), selectedMonth);
       if (!inMonth) return false;
-      if (t.poolId) return true; // joint = visible to both
-      return t.userId === currentUser; // personal = only owner
+      if (t.poolId) return true;
+      return t.userId === currentUser;
     });
   }, [transactions, currentUser, selectedMonth]);
 
-  // Summary calculations
   const summary = useMemo(() => {
     const userTxs = visibleTransactions.filter((t) => t.userId === currentUser);
     const personalIncome = userTxs
@@ -38,22 +36,10 @@ export default function LedgerView() {
     const personalExpense = userTxs
       .filter((t) => t.type === 'expense' && !t.poolId)
       .reduce((s, t) => s + t.amount, 0);
-    const totalIncome = userTxs
-      .filter((t) => t.type === 'income')
-      .reduce((s, t) => s + t.amount, 0);
-    const totalExpense = userTxs
-      .filter((t) => t.type === 'expense')
-      .reduce((s, t) => s + t.amount, 0);
 
-    return {
-      personalIncome,
-      personalExpense,
-      netPersonal: personalIncome - personalExpense,
-      netTotal: totalIncome - totalExpense,
-    };
+    return { personalIncome, personalExpense };
   }, [visibleTransactions, currentUser]);
 
-  // Group by date
   const grouped = useMemo(() => {
     const sorted = [...visibleTransactions].sort(
       (a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()
@@ -68,7 +54,6 @@ export default function LedgerView() {
   }, [visibleTransactions]);
 
   const getCategoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? '';
-  const getCategoryIcon = (id: string) => categories.find((c) => c.id === id)?.icon ?? '📝';
   const getAccountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? '';
   const getPoolName = (id: string) => pools.find((p) => p.id === id)?.name ?? '';
 
@@ -78,94 +63,111 @@ export default function LedgerView() {
   return (
     <div className="pb-4">
       {/* Month navigation */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4">
         <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
-        <button
-          onClick={() => { setEditingTx(null); setShowForm(true); }}
-          className="w-9 h-9 flex items-center justify-center rounded-full bg-indigo-600 text-white text-lg shadow-md hover:bg-indigo-700"
-        >
-          +
-        </button>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-3 mb-5">
-        <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
-          <p className="text-xs text-gray-500 mb-1">Personal Income</p>
-          <p className="text-lg font-bold text-emerald-600">{fmtMoney(summary.personalIncome)}</p>
-        </div>
-        <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
-          <p className="text-xs text-gray-500 mb-1">Personal Expense</p>
-          <p className="text-lg font-bold text-red-500">{fmtMoney(summary.personalExpense)}</p>
-        </div>
-        <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
-          <p className="text-xs text-gray-500 mb-1">Net Personal</p>
-          <p className={`text-lg font-bold ${summary.netPersonal >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {fmtMoney(summary.netPersonal)}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
-          <p className="text-xs text-gray-500 mb-1">Net Total</p>
-          <p className={`text-lg font-bold ${summary.netTotal >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {fmtMoney(summary.netTotal)}
-          </p>
+      {/* Summary row */}
+      <div className="flex items-center justify-between mb-4 px-1">
+        <div className="flex gap-6">
+          <div>
+            <p className="text-xs text-dark-muted">Deposit</p>
+            <p className="text-sm font-bold text-blue-400">{fmtMoney(summary.personalIncome)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-dark-muted">Withdrawal</p>
+            <p className="text-sm font-bold text-red-400">{fmtMoney(summary.personalExpense)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-dark-muted">Total</p>
+            <p className={`text-sm font-bold ${summary.personalIncome - summary.personalExpense >= 0 ? 'text-dark-text' : 'text-red-400'}`}>
+              {fmtMoney(summary.personalIncome - summary.personalExpense)}
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Transaction feed */}
       {grouped.length === 0 && (
-        <div className="text-center py-12 text-gray-400 text-sm">No transactions this month</div>
+        <div className="text-center py-12 text-dark-muted text-sm">No transactions this month</div>
       )}
-      {grouped.map(([date, txs]) => (
-        <div key={date} className="mb-4">
-          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-            {format(parseISO(date), 'EEEE, MMM d')}
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+      {grouped.map(([date, txs]) => {
+        const d = parseISO(date);
+        const dayNum = d.getDate().toString().padStart(2, '0');
+        const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+        const dayIncome = txs.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+        const dayExpense = txs.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+
+        return (
+          <div key={date} className="mb-1">
+            {/* Day header */}
+            <div className="flex items-center justify-between py-2.5 border-b border-dark-border">
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-dark-text">{dayNum}</span>
+                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                  dayName === 'Sun' || dayName === 'Sat'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-dark-surface text-dark-muted'
+                }`}>
+                  {dayName}
+                </span>
+              </div>
+              <div className="flex gap-4 text-xs">
+                <span className="text-blue-400">{fmtMoney(dayIncome)}</span>
+                <span className="text-red-400">{fmtMoney(dayExpense)}</span>
+              </div>
+            </div>
+            {/* Transactions */}
             {txs.map((t) => (
               <button
                 key={t.id}
                 onClick={() => { setEditingTx(t); setShowForm(true); }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center gap-3 px-2 py-3 text-left hover:bg-dark-surface/50 transition-colors border-b border-dark-border/50"
               >
-                <span className="text-xl">{getCategoryIcon(t.categoryId)}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-900 truncate">{t.description}</span>
+                    <span className="text-xs text-dark-muted">{getCategoryName(t.categoryId)}</span>
                     {t.poolId && (
-                      <span className="px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 rounded">
+                      <span className="px-1.5 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-400 rounded">
                         JOINT
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-gray-400 mt-0.5">
-                    {getCategoryName(t.categoryId)}
-                    {t.type === 'transfer' ? ` → ${getAccountName(t.toAccountId!)}` : ` · ${getAccountName(t.accountId)}`}
-                    {t.poolId && ` · ${getPoolName(t.poolId)}`}
-                    {t.userId !== currentUser && (
-                      <span className="ml-1 text-gray-300">
-                        (by {t.userId === 'husband' ? 'Caleb' : 'Rachel'})
-                      </span>
+                  <div className="text-sm font-medium text-dark-text mt-0.5">
+                    {t.description}
+                    {t.type === 'transfer' && (
+                      <span className="text-dark-muted"> → {getAccountName(t.toAccountId!)}</span>
                     )}
+                  </div>
+                  <div className="text-xs text-dark-muted mt-0.5">
+                    {getAccountName(t.accountId)}
+                    {t.poolId && ` · ${getPoolName(t.poolId)}`}
                   </div>
                 </div>
                 <span
                   className={`text-sm font-semibold ${
                     t.type === 'income'
-                      ? 'text-emerald-600'
+                      ? 'text-blue-400'
                       : t.type === 'expense'
-                      ? 'text-red-500'
-                      : 'text-gray-500'
+                      ? 'text-red-400'
+                      : 'text-dark-muted'
                   }`}
                 >
-                  {t.type === 'income' ? '+' : t.type === 'expense' ? '-' : ''}
                   {fmtMoney(t.amount)}
                 </span>
               </button>
             ))}
           </div>
-        </div>
-      ))}
+        );
+      })}
+
+      {/* FAB */}
+      <button
+        onClick={() => { setEditingTx(null); setShowForm(true); }}
+        className="fixed bottom-20 right-6 w-14 h-14 bg-orange-500 rounded-full flex items-center justify-center text-white text-2xl shadow-lg hover:bg-orange-600 transition-colors z-30"
+      >
+        +
+      </button>
 
       {showForm && (
         <TransactionForm

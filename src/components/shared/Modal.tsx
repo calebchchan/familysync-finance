@@ -21,13 +21,13 @@ export default function Modal({ open, onClose, title, children }: ModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="fixed inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto shadow-xl">
-        <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-2xl">
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+      <div className="fixed inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative bg-dark-card rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto shadow-xl border border-dark-border">
+        <div className="sticky top-0 bg-dark-card border-b border-dark-border px-5 py-4 flex items-center justify-between rounded-t-2xl">
+          <h2 className="text-lg font-semibold text-dark-text">{title}</h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500"
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-dark-surface text-dark-muted"
           >
             ✕
           </button>

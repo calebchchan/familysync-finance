@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import Modal from '../shared/Modal';
 import type { Category, Account, AccountGroup, JointPool, UserProfile } from '../../types';
 
-type SettingsSection = 'users' | 'categories' | 'accounts' | 'groups' | 'pools';
+type SettingsSection = 'users' | 'categories' | 'accounts' | 'groups' | 'pools' | 'import';
 
 export default function SettingsView() {
   const { resetAllData } = useApp();
+  const { user, userRole, signOut, generateInviteLink } = useAuth();
   const [section, setSection] = useState<SettingsSection | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const sections: { id: SettingsSection; label: string; icon: string; desc: string }[] = [
     { id: 'users', label: 'User Profiles', icon: '👥', desc: 'Update display names' },
@@ -15,6 +18,7 @@ export default function SettingsView() {
     { id: 'accounts', label: 'Accounts', icon: '🏦', desc: 'Bank accounts, cards, wallets' },
     { id: 'groups', label: 'Account Groups', icon: '📁', desc: 'Organize your accounts' },
     { id: 'pools', label: 'Joint Pools', icon: '🤝', desc: 'Shared financial goals' },
+    { id: 'import', label: 'Import Transactions', icon: '📥', desc: 'Import from Excel file' },
   ];
 
   const handleReset = async () => {
@@ -23,45 +27,86 @@ export default function SettingsView() {
     }
   };
 
+  const handleCopyInvite = async () => {
+    const link = generateInviteLink();
+    if (link) {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
     <div className="pb-4">
+      <h1 className="text-lg font-bold text-dark-text mb-4">More</h1>
+
+      {/* Account info */}
+      <div className="bg-dark-card rounded-xl p-4 border border-dark-border mb-4">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">{userRole === 'husband' ? '👨' : '👩'}</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-dark-text capitalize">{userRole ?? 'User'}</p>
+            <p className="text-xs text-dark-muted">{user?.email}</p>
+          </div>
+          <button
+            onClick={signOut}
+            className="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg bg-red-500/10"
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+
+      {/* Invite link */}
+      <button
+        onClick={handleCopyInvite}
+        className="w-full flex items-center gap-3 bg-dark-card rounded-xl p-4 border border-dark-border text-left hover:bg-dark-surface transition-colors mb-4"
+      >
+        <span className="text-2xl">🔗</span>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-dark-text">Invite Partner</p>
+          <p className="text-xs text-dark-muted">
+            {copied ? 'Link copied to clipboard!' : 'Generate invite link for your spouse'}
+          </p>
+        </div>
+        <span className="text-dark-muted">›</span>
+      </button>
+
       <div className="space-y-2">
         {sections.map((s) => (
           <button
             key={s.id}
             onClick={() => setSection(s.id)}
-            className="w-full flex items-center gap-3 bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-left hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center gap-3 bg-dark-card rounded-xl p-4 border border-dark-border text-left hover:bg-dark-surface transition-colors"
           >
             <span className="text-2xl">{s.icon}</span>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{s.label}</p>
-              <p className="text-xs text-gray-400">{s.desc}</p>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-dark-text">{s.label}</p>
+              <p className="text-xs text-dark-muted">{s.desc}</p>
             </div>
-            <span className="ml-auto text-gray-300">›</span>
+            <span className="text-dark-muted">›</span>
           </button>
         ))}
       </div>
 
-      {/* Data management */}
       <div className="mt-6">
-        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">
+        <h3 className="text-xs font-semibold text-dark-muted uppercase tracking-wide mb-2 px-1">
           Data Management
         </h3>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+        <div className="bg-dark-card rounded-xl border border-dark-border divide-y divide-dark-border">
           <div className="px-4 py-3">
-            <p className="text-xs text-gray-500 mb-1">
-              Data is stored locally on this device in your browser. It persists across refreshes
-              but is not synced to any cloud service.
+            <p className="text-xs text-dark-muted">
+              Data is stored in Supabase and synced across devices.
             </p>
           </div>
           <button
             onClick={handleReset}
-            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-red-50 transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-red-500/10 transition-colors"
           >
             <span className="text-xl">🔄</span>
             <div>
-              <p className="text-sm font-medium text-red-600">Reset All Data</p>
-              <p className="text-xs text-gray-400">Restore sample data and clear all changes</p>
+              <p className="text-sm font-medium text-red-400">Reset All Data</p>
+              <p className="text-xs text-dark-muted">Restore sample data and clear all changes</p>
             </div>
           </button>
         </div>
@@ -72,7 +117,198 @@ export default function SettingsView() {
       {section === 'accounts' && <AccountSettings onClose={() => setSection(null)} />}
       {section === 'groups' && <GroupSettings onClose={() => setSection(null)} />}
       {section === 'pools' && <PoolSettings onClose={() => setSection(null)} />}
+      {section === 'import' && <ImportView onClose={() => setSection(null)} />}
     </div>
+  );
+}
+
+function ImportView({ onClose }: { onClose: () => void }) {
+  const { currentUser, categories, accounts, addTransaction } = useApp();
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<Record<string, string>[]>([]);
+  const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [importing, setImporting] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const [columns, setColumns] = useState<string[]>([]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    setResult(null);
+
+    try {
+      const XLSX = await import('xlsx');
+      const data = await f.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { raw: false });
+
+      if (json.length > 0) {
+        setColumns(Object.keys(json[0]));
+        setPreview(json.slice(0, 5));
+
+        // Auto-detect mapping
+        const cols = Object.keys(json[0]).map((c) => c.toLowerCase());
+        const autoMap: Record<string, string> = {};
+        const colNames = Object.keys(json[0]);
+        cols.forEach((c, i) => {
+          if (c.includes('date')) autoMap.date = colNames[i];
+          if (c.includes('amount') || c.includes('sum') || c.includes('total')) autoMap.amount = colNames[i];
+          if (c.includes('desc') || c.includes('note') || c.includes('memo') || c.includes('narr')) autoMap.description = colNames[i];
+          if (c.includes('categ') || c.includes('type')) autoMap.category = colNames[i];
+          if (c.includes('account')) autoMap.account = colNames[i];
+        });
+        setMapping(autoMap);
+      }
+    } catch (err) {
+      setResult('Error reading file. Make sure it\'s a valid Excel file (.xlsx).');
+    }
+  };
+
+  const handleImport = async () => {
+    if (!mapping.date || !mapping.amount || !mapping.description) {
+      setResult('Please map at least Date, Amount, and Description columns.');
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const XLSX = await import('xlsx');
+      const data = await file!.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { raw: false });
+
+      let imported = 0;
+      for (const row of json) {
+        const amount = parseFloat(row[mapping.amount]?.replace(/[,$]/g, '') ?? '0');
+        if (isNaN(amount) || amount === 0) continue;
+
+        const description = row[mapping.description] ?? '';
+        const dateStr = row[mapping.date] ?? '';
+
+        // Try to parse date
+        let date = '';
+        try {
+          const d = new Date(dateStr);
+          if (!isNaN(d.getTime())) {
+            date = d.toISOString().split('T')[0];
+          }
+        } catch {
+          continue;
+        }
+        if (!date) continue;
+
+        // Match category by name
+        const catName = row[mapping.category]?.toLowerCase() ?? '';
+        const matchedCat = categories.find((c) => c.name.toLowerCase() === catName);
+        const categoryId = matchedCat?.id ?? categories.find((c) => c.type === (amount > 0 ? 'income' : 'expense'))?.id ?? categories[0]?.id;
+
+        // Match account by name
+        const accName = row[mapping.account]?.toLowerCase() ?? '';
+        const userAccounts = accounts.filter((a) => a.userId === currentUser);
+        const matchedAcc = userAccounts.find((a) => a.name.toLowerCase() === accName);
+        const accountId = matchedAcc?.id ?? userAccounts[0]?.id;
+
+        if (!categoryId || !accountId) continue;
+
+        await addTransaction({
+          userId: currentUser,
+          type: amount > 0 ? 'income' : 'expense',
+          amount: Math.abs(amount),
+          description,
+          categoryId,
+          accountId,
+          date,
+        });
+        imported++;
+      }
+
+      setResult(`Successfully imported ${imported} transactions.`);
+    } catch (err) {
+      setResult('Error importing: ' + (err instanceof Error ? err.message : String(err)));
+    }
+    setImporting(false);
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Import Transactions">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-xs font-medium text-dark-muted mb-2">Select Excel File (.xlsx)</label>
+          <input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleFileChange}
+            className="w-full text-sm text-dark-text file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-500/20 file:text-blue-400 hover:file:bg-blue-500/30"
+          />
+        </div>
+
+        {columns.length > 0 && (
+          <>
+            <div>
+              <h3 className="text-xs font-semibold text-dark-muted uppercase tracking-wide mb-2">Column Mapping</h3>
+              {['date', 'amount', 'description', 'category', 'account'].map((field) => (
+                <div key={field} className="flex items-center justify-between py-2 border-b border-dark-border">
+                  <span className="text-sm text-dark-text capitalize">{field}{field === 'date' || field === 'amount' || field === 'description' ? ' *' : ''}</span>
+                  <select
+                    value={mapping[field] ?? ''}
+                    onChange={(e) => setMapping({ ...mapping, [field]: e.target.value })}
+                    className="bg-dark-surface border border-dark-border rounded-lg px-2 py-1 text-sm text-dark-text focus:outline-none"
+                  >
+                    <option value="">-- Skip --</option>
+                    {columns.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+
+            {preview.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-dark-muted uppercase tracking-wide mb-2">Preview (first 5 rows)</h3>
+                <div className="overflow-x-auto">
+                  <table className="text-xs text-dark-text w-full">
+                    <thead>
+                      <tr>
+                        {columns.slice(0, 5).map((c) => (
+                          <th key={c} className="text-left py-1 px-2 text-dark-muted font-medium">{c}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preview.map((row, i) => (
+                        <tr key={i} className="border-t border-dark-border">
+                          {columns.slice(0, 5).map((c) => (
+                            <td key={c} className="py-1 px-2 truncate max-w-[100px]">{row[c]}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handleImport}
+              disabled={importing}
+              className="w-full py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {importing ? 'Importing...' : 'Import All Rows'}
+            </button>
+          </>
+        )}
+
+        {result && (
+          <p className={`text-sm ${result.startsWith('Success') ? 'text-emerald-400' : 'text-red-400'}`}>
+            {result}
+          </p>
+        )}
+      </div>
+    </Modal>
   );
 }
 
@@ -93,22 +329,22 @@ function UserSettings({ onClose }: { onClose: () => void }) {
     <Modal open onClose={onClose} title="User Profiles">
       <div className="space-y-3">
         {users.map((u) => (
-          <div key={u.id} className="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-3">
+          <div key={u.id} className="flex items-center gap-3 bg-dark-surface rounded-lg px-3 py-3">
             <span className="text-2xl">{u.avatar}</span>
             {editing?.id === u.id ? (
               <div className="flex-1 flex gap-2">
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="flex-1 border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="flex-1 bg-dark-card border border-dark-border rounded-lg px-2 py-1 text-sm text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <button onClick={handleSave} className="text-sm text-indigo-600 font-medium">Save</button>
-                <button onClick={() => setEditing(null)} className="text-sm text-gray-400">Cancel</button>
+                <button onClick={handleSave} className="text-sm text-blue-400 font-medium">Save</button>
+                <button onClick={() => setEditing(null)} className="text-sm text-dark-muted">Cancel</button>
               </div>
             ) : (
               <>
-                <span className="flex-1 text-sm font-medium text-gray-900">{u.name}</span>
-                <button onClick={() => startEdit(u)} className="text-xs text-indigo-600 font-medium">Edit</button>
+                <span className="flex-1 text-sm font-medium text-dark-text">{u.name}</span>
+                <button onClick={() => startEdit(u)} className="text-xs text-blue-400 font-medium">Edit</button>
               </>
             )}
           </div>
@@ -153,52 +389,46 @@ function CategorySettings({ onClose }: { onClose: () => void }) {
           <button
             key={c.id}
             onClick={() => startEdit(c)}
-            className="w-full flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2 text-left hover:bg-gray-100"
+            className="w-full flex items-center gap-3 bg-dark-surface rounded-lg px-3 py-2 text-left hover:bg-dark-border"
           >
             <span>{c.icon}</span>
-            <span className="flex-1 text-sm text-gray-900">{c.name}</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded ${c.type === 'income' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+            <span className="flex-1 text-sm text-dark-text">{c.name}</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded ${c.type === 'income' ? 'bg-blue-500/20 text-blue-400' : 'bg-red-500/20 text-red-400'}`}>
               {c.type}
             </span>
           </button>
         ))}
       </div>
-      <button
-        onClick={startAdd}
-        className="w-full py-2 rounded-lg text-sm font-medium bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
-      >
+      <button onClick={startAdd} className="w-full py-2 rounded-lg text-sm font-medium bg-blue-500/20 text-blue-400 hover:bg-blue-500/30">
         + Add Category
       </button>
-
       {showAdd && (
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg space-y-3">
+        <div className="mt-4 p-3 bg-dark-surface rounded-lg space-y-3">
           <input
             value={icon}
             onChange={(e) => setIcon(e.target.value)}
-            className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-center text-lg"
+            className="w-16 bg-dark-card border border-dark-border rounded-lg px-2 py-1 text-center text-lg text-dark-text"
             maxLength={2}
           />
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Category name"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <select
             value={type}
             onChange={(e) => setType(e.target.value as 'income' | 'expense')}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="income">Income</option>
             <option value="expense">Expense</option>
           </select>
           <div className="flex gap-2">
-            {editing && (
-              <button onClick={handleDelete} className="px-3 py-1.5 text-sm text-red-600 bg-red-50 rounded-lg">Delete</button>
-            )}
+            {editing && <button onClick={handleDelete} className="px-3 py-1.5 text-sm text-red-400 bg-red-500/20 rounded-lg">Delete</button>}
             <div className="flex-1" />
-            <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg">Cancel</button>
-            <button onClick={handleSave} className="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-lg">Save</button>
+            <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-sm text-dark-muted bg-dark-card rounded-lg">Cancel</button>
+            <button onClick={handleSave} className="px-3 py-1.5 text-sm text-white bg-blue-600 rounded-lg">Save</button>
           </div>
         </div>
       )}
@@ -240,37 +470,31 @@ function AccountSettings({ onClose }: { onClose: () => void }) {
     <Modal open onClose={onClose} title="Accounts">
       <div className="space-y-2 mb-4">
         {userAccounts.map((a) => (
-          <button
-            key={a.id}
-            onClick={() => startEdit(a)}
-            className="w-full flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2 text-left hover:bg-gray-100"
-          >
+          <button key={a.id} onClick={() => startEdit(a)} className="w-full flex items-center gap-3 bg-dark-surface rounded-lg px-3 py-2 text-left hover:bg-dark-border">
             <span>{a.icon}</span>
-            <span className="flex-1 text-sm text-gray-900">{a.name}</span>
-            <span className={`text-sm font-medium ${a.balance >= 0 ? 'text-gray-900' : 'text-red-500'}`}>
-              {fmtMoney(a.balance)}
-            </span>
+            <span className="flex-1 text-sm text-dark-text">{a.name}</span>
+            <span className={`text-sm font-medium ${a.balance >= 0 ? 'text-dark-text' : 'text-red-400'}`}>{fmtMoney(a.balance)}</span>
           </button>
         ))}
       </div>
-      <button onClick={startAdd} className="w-full py-2 rounded-lg text-sm font-medium bg-indigo-50 text-indigo-600 hover:bg-indigo-100">
+      <button onClick={startAdd} className="w-full py-2 rounded-lg text-sm font-medium bg-blue-500/20 text-blue-400 hover:bg-blue-500/30">
         + Add Account
       </button>
       {showAdd && (
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg space-y-3">
+        <div className="mt-4 p-3 bg-dark-surface rounded-lg space-y-3">
           <div className="flex gap-2">
-            <input value={icon} onChange={(e) => setIcon(e.target.value)} className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-center text-lg" maxLength={2} />
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Account name" className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <input value={icon} onChange={(e) => setIcon(e.target.value)} className="w-16 bg-dark-card border border-dark-border rounded-lg px-2 py-1 text-center text-lg text-dark-text" maxLength={2} />
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Account name" className="flex-1 bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <select value={groupId} onChange={(e) => setGroupId(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <select value={groupId} onChange={(e) => setGroupId(e.target.value)} className="w-full bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500">
             {accountGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
-          <input type="number" value={balance} onChange={(e) => setBalance(e.target.value)} placeholder="Balance" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input type="number" value={balance} onChange={(e) => setBalance(e.target.value)} placeholder="Balance" className="w-full bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500" />
           <div className="flex gap-2">
-            {editing && <button onClick={handleDelete} className="px-3 py-1.5 text-sm text-red-600 bg-red-50 rounded-lg">Delete</button>}
+            {editing && <button onClick={handleDelete} className="px-3 py-1.5 text-sm text-red-400 bg-red-500/20 rounded-lg">Delete</button>}
             <div className="flex-1" />
-            <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg">Cancel</button>
-            <button onClick={handleSave} className="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-lg">Save</button>
+            <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-sm text-dark-muted bg-dark-card rounded-lg">Cancel</button>
+            <button onClick={handleSave} className="px-3 py-1.5 text-sm text-white bg-blue-600 rounded-lg">Save</button>
           </div>
         </div>
       )}
@@ -305,23 +529,23 @@ function GroupSettings({ onClose }: { onClose: () => void }) {
     <Modal open onClose={onClose} title="Account Groups">
       <div className="space-y-2 mb-4">
         {accountGroups.map((g) => (
-          <button key={g.id} onClick={() => startEdit(g)} className="w-full flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2 text-left hover:bg-gray-100">
-            <span className="text-sm text-gray-900">{g.name}</span>
-            <span className="ml-auto text-xs text-gray-400">Order: {g.order}</span>
+          <button key={g.id} onClick={() => startEdit(g)} className="w-full flex items-center gap-3 bg-dark-surface rounded-lg px-3 py-2 text-left hover:bg-dark-border">
+            <span className="text-sm text-dark-text">{g.name}</span>
+            <span className="ml-auto text-xs text-dark-muted">Order: {g.order}</span>
           </button>
         ))}
       </div>
-      <button onClick={startAdd} className="w-full py-2 rounded-lg text-sm font-medium bg-indigo-50 text-indigo-600 hover:bg-indigo-100">
+      <button onClick={startAdd} className="w-full py-2 rounded-lg text-sm font-medium bg-blue-500/20 text-blue-400 hover:bg-blue-500/30">
         + Add Group
       </button>
       {showAdd && (
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg space-y-3">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Group name" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        <div className="mt-4 p-3 bg-dark-surface rounded-lg space-y-3">
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Group name" className="w-full bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500" />
           <div className="flex gap-2">
-            {editing && <button onClick={handleDelete} className="px-3 py-1.5 text-sm text-red-600 bg-red-50 rounded-lg">Delete</button>}
+            {editing && <button onClick={handleDelete} className="px-3 py-1.5 text-sm text-red-400 bg-red-500/20 rounded-lg">Delete</button>}
             <div className="flex-1" />
-            <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg">Cancel</button>
-            <button onClick={handleSave} className="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-lg">Save</button>
+            <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-sm text-dark-muted bg-dark-card rounded-lg">Cancel</button>
+            <button onClick={handleSave} className="px-3 py-1.5 text-sm text-white bg-blue-600 rounded-lg">Save</button>
           </div>
         </div>
       )}
@@ -361,28 +585,28 @@ function PoolSettings({ onClose }: { onClose: () => void }) {
     <Modal open onClose={onClose} title="Joint Pools">
       <div className="space-y-2 mb-4">
         {pools.map((p) => (
-          <button key={p.id} onClick={() => startEdit(p)} className="w-full flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2 text-left hover:bg-gray-100">
+          <button key={p.id} onClick={() => startEdit(p)} className="w-full flex items-center gap-3 bg-dark-surface rounded-lg px-3 py-2 text-left hover:bg-dark-border">
             <span>{p.icon}</span>
-            <span className="flex-1 text-sm text-gray-900">{p.name}</span>
-            <span className="text-xs text-gray-400">Target: {fmtMoney(p.target)}</span>
+            <span className="flex-1 text-sm text-dark-text">{p.name}</span>
+            <span className="text-xs text-dark-muted">Target: {fmtMoney(p.target)}</span>
           </button>
         ))}
       </div>
-      <button onClick={startAdd} className="w-full py-2 rounded-lg text-sm font-medium bg-indigo-50 text-indigo-600 hover:bg-indigo-100">
+      <button onClick={startAdd} className="w-full py-2 rounded-lg text-sm font-medium bg-blue-500/20 text-blue-400 hover:bg-blue-500/30">
         + Add Pool
       </button>
       {showAdd && (
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg space-y-3">
+        <div className="mt-4 p-3 bg-dark-surface rounded-lg space-y-3">
           <div className="flex gap-2">
-            <input value={icon} onChange={(e) => setIcon(e.target.value)} className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-center text-lg" maxLength={2} />
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Pool name" className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <input value={icon} onChange={(e) => setIcon(e.target.value)} className="w-16 bg-dark-card border border-dark-border rounded-lg px-2 py-1 text-center text-lg text-dark-text" maxLength={2} />
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Pool name" className="flex-1 bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <input type="number" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="Target amount" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input type="number" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="Target amount" className="w-full bg-dark-card border border-dark-border rounded-lg px-3 py-2 text-sm text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500" />
           <div className="flex gap-2">
-            {editing && <button onClick={handleDelete} className="px-3 py-1.5 text-sm text-red-600 bg-red-50 rounded-lg">Delete</button>}
+            {editing && <button onClick={handleDelete} className="px-3 py-1.5 text-sm text-red-400 bg-red-500/20 rounded-lg">Delete</button>}
             <div className="flex-1" />
-            <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg">Cancel</button>
-            <button onClick={handleSave} className="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-lg">Save</button>
+            <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-sm text-dark-muted bg-dark-card rounded-lg">Cancel</button>
+            <button onClick={handleSave} className="px-3 py-1.5 text-sm text-white bg-blue-600 rounded-lg">Save</button>
           </div>
         </div>
       )}

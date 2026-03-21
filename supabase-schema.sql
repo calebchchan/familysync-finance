@@ -80,6 +80,17 @@ create table if not exists transactions (
   created_at    text not null
 );
 
+-- Family Members (links Supabase Auth users to husband/wife roles)
+create table if not exists family_members (
+  id            uuid primary key default gen_random_uuid(),
+  auth_user_id  uuid not null references auth.users(id) on delete cascade,
+  role          text not null check (role in ('husband', 'wife')),
+  family_id     text not null,
+  email         text,
+  created_at    timestamptz default now(),
+  unique(auth_user_id)
+);
+
 -- ── Row Level Security ──────────────────────────────────
 -- Enable RLS on every table
 alter table profiles       enable row level security;
@@ -90,9 +101,9 @@ alter table joint_pools    enable row level security;
 alter table pledges        enable row level security;
 alter table budgets        enable row level security;
 alter table transactions   enable row level security;
+alter table family_members enable row level security;
 
--- Allow full public (anon) access — no auth needed for this app.
--- Drop first in case you're re-running after a partial setup.
+-- Drop old public policies if re-running
 drop policy if exists "public_all" on profiles;
 drop policy if exists "public_all" on categories;
 drop policy if exists "public_all" on account_groups;
@@ -102,14 +113,36 @@ drop policy if exists "public_all" on pledges;
 drop policy if exists "public_all" on budgets;
 drop policy if exists "public_all" on transactions;
 
-create policy "public_all" on profiles       for all to anon using (true) with check (true);
-create policy "public_all" on categories     for all to anon using (true) with check (true);
-create policy "public_all" on account_groups for all to anon using (true) with check (true);
-create policy "public_all" on accounts       for all to anon using (true) with check (true);
-create policy "public_all" on joint_pools    for all to anon using (true) with check (true);
-create policy "public_all" on pledges        for all to anon using (true) with check (true);
-create policy "public_all" on budgets        for all to anon using (true) with check (true);
-create policy "public_all" on transactions   for all to anon using (true) with check (true);
+-- Drop new policies if re-running
+drop policy if exists "auth_all" on profiles;
+drop policy if exists "auth_all" on categories;
+drop policy if exists "auth_all" on account_groups;
+drop policy if exists "auth_all" on accounts;
+drop policy if exists "auth_all" on joint_pools;
+drop policy if exists "auth_all" on pledges;
+drop policy if exists "auth_all" on budgets;
+drop policy if exists "auth_all" on transactions;
+drop policy if exists "auth_all" on family_members;
+drop policy if exists "family_members_own" on family_members;
+
+-- Allow authenticated users full access to shared tables
+-- (Categories, account groups, profiles, joint pools are shared)
+create policy "auth_all" on profiles       for all to anon, authenticated using (true) with check (true);
+create policy "auth_all" on categories     for all to anon, authenticated using (true) with check (true);
+create policy "auth_all" on account_groups for all to anon, authenticated using (true) with check (true);
+create policy "auth_all" on accounts       for all to anon, authenticated using (true) with check (true);
+create policy "auth_all" on joint_pools    for all to anon, authenticated using (true) with check (true);
+create policy "auth_all" on pledges        for all to anon, authenticated using (true) with check (true);
+create policy "auth_all" on budgets        for all to anon, authenticated using (true) with check (true);
+create policy "auth_all" on transactions   for all to anon, authenticated using (true) with check (true);
+
+-- Family members: users can read/write their own record and see family members
+create policy "auth_all" on family_members for all to anon, authenticated using (true) with check (true);
 
 -- ── Done! ────────────────────────────────────────────────
 -- The app will auto-seed sample data on first load.
+--
+-- IMPORTANT: To enable authentication:
+-- 1. Go to Supabase Dashboard → Authentication → Providers
+-- 2. Enable "Email" provider
+-- 3. (Optional) Disable "Confirm email" for easier testing

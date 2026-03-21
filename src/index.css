@@ -10,6 +10,14 @@
   --color-joint: #f59e0b;
   --color-husband: #3b82f6;
   --color-wife: #ec4899;
+  --color-dark-bg: #0f1117;
+  --color-dark-card: #1a1d27;
+  --color-dark-border: #2a2d3a;
+  --color-dark-surface: #22252f;
+  --color-dark-text: #e2e4e9;
+  --color-dark-muted: #7a7f8e;
+  --color-bar-blue: #5b9bf5;
+  --color-bar-red: #f87171;
 }
 
 * {
@@ -23,11 +31,15 @@
 body {
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
-  background-color: #f8fafc;
-  color: #1e293b;
+  background-color: #0f1117;
+  color: #e2e4e9;
   min-height: 100vh;
 }
 
 #root {
   min-height: 100vh;
+}
+
+input, select, textarea {
+  color-scheme: dark;
 }
