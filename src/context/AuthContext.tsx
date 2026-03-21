@@ -87,6 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) return error.message;
     if (!data.user) return 'Failed to create account';
 
+    // If email confirmation is required, data.session will be null.
+    // The user must confirm their email before we can insert family_members.
+    if (!data.session) {
+      return 'Please check your email to confirm your account, then sign in.';
+    }
+
     const fid = inviteFamilyId || crypto.randomUUID();
 
     // Create family_members entry
@@ -100,11 +106,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (memberError) return memberError.message;
 
     // Also update the profile to link to the family
-    await supabase.from('profiles').upsert({
+    const { error: profileError } = await supabase.from('profiles').upsert({
       id: role,
       name: role === 'husband' ? 'Husband' : 'Wife',
       avatar: role === 'husband' ? '👨' : '👩',
     });
+
+    if (profileError) return profileError.message;
+
+    // Manually set role and familyId so the app doesn't depend on
+    // the onAuthStateChange race to load them from the database.
+    setUserRole(role);
+    setFamilyId(fid);
 
     return null;
   };
